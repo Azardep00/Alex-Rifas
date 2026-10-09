@@ -1,0 +1,102 @@
+# Configuración base = PRODUCCIÓN (falla de forma segura).
+# Si falta DB_URL o JWT_SECRET la app NO arranca, en lugar de caer en valores por defecto inseguros.
+# Para desarrollo local usa el perfil dev:  -Dspring-boot.run.profiles=dev
+spring:
+  application:
+    name: alex-rifas-api
+  autoconfigure:
+    # No queremos el usuario en memoria con contraseña generada que Spring Security crea por defecto.
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate   # el esquema lo manejan las migraciones Flyway, Hibernate solo valida
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: ${PORT:8080}
+  # La IP real del cliente se toma de X-Forwarded-For SOLO si viene de un proxy interno de confianza
+  # (Tomcat RemoteIpValve). Así el limitador de peticiones no se puede evadir falsificando el header.
+  forward-headers-strategy: native
+  shutdown: graceful
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+logging:
+  level:
+    root: INFO
+  pattern:
+    level: "%5p [%X{rastreoId:-}]"
+
+app:
+  seguridad:
+    jwt-secret: ${JWT_SECRET}
+    jwt-expiracion-minutos: 15
+    refresh-expiracion-dias: 30
+    bcrypt-costo: 12
+    csp: "default-src 'none'; frame-ancestors 'none'"
+  cors:
+    # Lista separada por comas. Para la app móvil empaquetada (Capacitor) agrega capacitor://localhost y https://localhost
+    origenes-permitidos: ${CORS_ORIGENES:}
+  rifas:
+    max-boletos: 10000
+    minutos-reserva: 15
+    minutos-extension-pago: 20
+    max-reservas-pendientes-por-telefono: 3
+    max-boletos-por-compra-tope: 100
+    max-boletos-por-compra-defecto: 10
+    max-premios: 20
+    exigir-autorizacion: true
+    edad-minima: 18
+    permitir-sorteo-anticipado: false
+  wompi:
+    habilitado: ${WOMPI_HABILITADO:false}
+    api-url: ${WOMPI_API_URL:https://sandbox.wompi.co}
+    llave-publica: ${WOMPI_PUBLIC_KEY:}
+    llave-privada: ${WOMPI_PRIVATE_KEY:}
+    secreto-integridad: ${WOMPI_INTEGRITY_SECRET:}
+    secreto-eventos: ${WOMPI_EVENTS_SECRET:}
+  admin:
+    # Si ADMIN_CORREO y ADMIN_CONTRASENA están definidos y no existe ningún admin, se crea al arrancar.
+    correo: ${ADMIN_CORREO:}
+    contrasena: ${ADMIN_CONTRASENA:}
+    nombre: ${ADMIN_NOMBRE:Administrador}
+  limites:
+    habilitado: true
+    registro-por-15-min: 10
+    reservas-por-10-min: 12
+    consultas-por-5-min: 40
+    refresh-por-5-min: 30
+    max-cuerpo-bytes: 65536
+  scheduler:
+    habilitado: true
+    intervalo-expiracion-ms: 60000
