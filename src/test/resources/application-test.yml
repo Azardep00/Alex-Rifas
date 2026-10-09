@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:alexrifas_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=15000
+    username: sa
+    password: ""
+    hikari:
+      maximum-pool-size: 20
+
+app:
+  seguridad:
+    jwt-secret: "clave-solo-para-pruebas-automatizadas-0123456789-abcdef"
+    bcrypt-costo: 4
+    csp: ""
+  cors:
+    origenes-permitidos: http://localhost:4200
+  rifas:
+    exigir-autorizacion: true
+    permitir-sorteo-anticipado: true
+    minutos-reserva: 15
+    minutos-extension-pago: 20
+  wompi:
+    habilitado: true
+    llave-publica: pub_test_123
+    llave-privada: prv_test_123
+    secreto-integridad: integridad_test
+    secreto-eventos: eventos_test
+  limites:
+    habilitado: false
+  scheduler:
+    habilitado: false
+  demo:
+    habilitado: false

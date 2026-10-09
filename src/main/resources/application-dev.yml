@@ -1,0 +1,27 @@
+# Perfil de DESARROLLO LOCAL. No usar en producción.
+# Base de datos H2 en memoria (modo PostgreSQL), Swagger UI y datos de demostración.
+spring:
+  datasource:
+    url: jdbc:h2:mem:alexrifas;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=10000
+    username: sa
+    password: ""
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+
+app:
+  seguridad:
+    jwt-secret: "clave-solo-para-desarrollo-local-no-usar-en-produccion-0123456789"
+    bcrypt-costo: 6
+    csp: ""   # el Swagger UI necesita scripts; en producción el CSP estricto sí se aplica
+  cors:
+    origenes-permitidos: http://localhost:4200,http://localhost:5173,http://localhost:3000
+  rifas:
+    exigir-autorizacion: false
+    permitir-sorteo-anticipado: true
+  demo:
+    habilitado: true
