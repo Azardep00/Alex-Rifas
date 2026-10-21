@@ -24,7 +24,7 @@ public final class AuthDtos {
             @NotBlank(message = "El teléfono es obligatorio.") @Size(max = 30) String telefono,
             @NotBlank(message = "El correo es obligatorio.")
             @Email(message = "El correo no tiene un formato válido.") @Size(max = 160) String correo,
-            @NotBlank(message = "La contraseña es obligatoria.") @Size(max = 100) String contrasena,
+            @NotBlank(message = "La contraseña es obligatoria.") @Size(min = 10, max = 72, message = "La contraseña debe tener entre 10 y 72 caracteres.") String contrasena,
             @NotNull(message = "La fecha de nacimiento es obligatoria.")
             @Past(message = "La fecha de nacimiento debe ser pasada.") LocalDate fechaNacimiento,
             @AssertTrue(message = "Debes aceptar los términos y condiciones.") boolean aceptoTerminos) {
@@ -36,12 +36,12 @@ public final class AuthDtos {
             @NotBlank(message = "El teléfono es obligatorio.") @Size(max = 30) String telefono,
             @NotBlank(message = "El correo es obligatorio.")
             @Email(message = "El correo no tiene un formato válido.") @Size(max = 160) String correo,
-            @NotBlank(message = "La contraseña es obligatoria.") @Size(max = 100) String contrasena) {
+            @NotBlank(message = "La contraseña es obligatoria.") @Size(min = 10, max = 72, message = "La contraseña debe tener entre 10 y 72 caracteres.") String contrasena) {
     }
 
     public record LoginRequest(
             @NotBlank(message = "El correo es obligatorio.") @Size(max = 160) String correo,
-            @NotBlank(message = "La contraseña es obligatoria.") @Size(max = 100) String contrasena) {
+            @NotBlank(message = "La contraseña es obligatoria.") @Size(min = 10, max = 72, message = "La contraseña debe tener entre 10 y 72 caracteres.") String contrasena) {
     }
 
     public record RefreshRequest(
