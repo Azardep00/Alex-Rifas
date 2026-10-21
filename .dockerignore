@@ -1,0 +1,10 @@
+# Contexto de build del backend (Dockerfile de la raíz): solo necesita pom.xml y src/
+.git
+.env
+target
+*.md
+docker-compose*.yml
+proxy
+web
+visor
+procesador

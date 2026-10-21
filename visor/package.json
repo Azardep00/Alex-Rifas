@@ -1,0 +1,16 @@
+{
+  "name": "alex-rifas-visor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Visor de resultados de Alex-Rifas",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
