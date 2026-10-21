@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alex-Rifas</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 42rem; margin: 3rem auto; padding: 0 1rem; color: #1f2937; }
+    h1 { margin-bottom: .25rem; }
+    .estado { display: inline-block; padding: .15rem .6rem; border-radius: 999px; font-size: .85rem; font-weight: 600; }
+    .UP { background: #dcfce7; color: #166534; }
+    .CAIDA, .DOWN, .DESCONOCIDO { background: #fee2e2; color: #991b1b; }
+    a { color: #2563eb; }
+  </style>
+</head>
+<body>
+  <h1>Alex-Rifas</h1>
+  <p>Sistema de rifas en línea.</p>
+  <p>Estado de la API: <span class="estado {{ estado_api }}">{{ estado_api }}</span></p>
+  <p><a href="/visor/">Ver resultados y ganadores</a></p>
+</body>
+</html>

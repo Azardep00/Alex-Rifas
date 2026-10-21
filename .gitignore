@@ -1,0 +1,17 @@
+# Maven
+target/
+
+# Secretos locales: NUNCA se suben al repositorio (usa .env.example como plantilla)
+.env
+
+# Node / Python
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+
+# IDEs y sistema
+.idea/
+.vscode/
+*.iml
+.DS_Store
