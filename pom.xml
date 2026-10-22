@@ -37,6 +37,12 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
+        <!-- Redis: cola de eventos del sorteo hacia el procesador Python -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
         <!-- Validación de los DTO que llegan en el body -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
