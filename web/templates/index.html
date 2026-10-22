@@ -3,20 +3,50 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Alex-Rifas</title>
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 42rem; margin: 3rem auto; padding: 0 1rem; color: #1f2937; }
-    h1 { margin-bottom: .25rem; }
-    .estado { display: inline-block; padding: .15rem .6rem; border-radius: 999px; font-size: .85rem; font-weight: 600; }
-    .UP { background: #dcfce7; color: #166534; }
-    .CAIDA, .DOWN, .DESCONOCIDO { background: #fee2e2; color: #991b1b; }
-    a { color: #2563eb; }
-  </style>
+  <meta name="description" content="Conoce las rifas disponibles en Alex-Rifas.">
+  <title>Alex-Rifas | Rifas disponibles</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-  <h1>Alex-Rifas</h1>
-  <p>Sistema de rifas en línea.</p>
-  <p>Estado de la API: <span class="estado {{ estado_api }}">{{ estado_api }}</span></p>
-  <p><a href="/visor/">Ver resultados y ganadores</a></p>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Alex-Rifas, inicio"><span class="brand-mark">AR</span><span>Alex-Rifas</span></a>
+    <nav aria-label="Navegación principal"><a class="active" href="/">Rifas</a><a href="/visor/">Resultados</a></nav>
+  </header>
+  <main>
+    <section class="hero">
+      <p class="eyebrow">SUEÑOS QUE SE PUEDEN GANAR</p>
+      <h1>Encuentra tu próxima rifa</h1>
+      <p>Explora los premios, consulta las fechas y revisa los números que todavía están disponibles.</p>
+      <div class="api-status"><span class="status-dot {{ 'up' if estado_api == 'UP' else 'down' }}"></span> Servicio de rifas: <strong>{{ estado_api }}</strong></div>
+    </section>
+
+    {% if error %}
+      <section class="notice error" role="status"><h2>Catálogo temporalmente no disponible</h2><p>{{ error }}</p><a class="button secondary" href="/">Volver a intentar</a></section>
+    {% elif not rifas %}
+      <section class="empty"><div class="empty-icon">◇</div><h2>Pronto habrá nuevas rifas</h2><p>Por ahora no hay rifas publicadas. Regresa más tarde para conocer los próximos premios.</p></section>
+    {% else %}
+      <section class="section-heading"><div><p class="eyebrow">CATÁLOGO</p><h2>Rifas publicadas</h2></div><span class="count">{{ rifas|length }} resultado{% if rifas|length != 1 %}s{% endif %}</span></section>
+      <section class="raffle-grid" aria-label="Rifas disponibles">
+        {% for rifa in rifas %}
+          <article class="raffle-card">
+            <div class="raffle-image">
+              {% if rifa.imagenUrl %}<img src="{{ rifa.imagenUrl }}" alt="Imagen de {{ rifa.titulo }}" loading="lazy">
+              {% else %}<div class="image-placeholder"><span>AR</span><small>Alex-Rifas</small></div>{% endif %}
+              <span class="tag">{{ rifa.estado }}</span>
+            </div>
+            <div class="raffle-content">
+              <h3>{{ rifa.titulo }}</h3>
+              <p class="price">{{ rifa.precioBoleto }} {{ rifa.moneda }} <span>por boleto</span></p>
+              <div class="raffle-meta"><span>Disponibles</span><strong>{{ rifa.boletosDisponibles }}</strong></div>
+              <div class="raffle-meta"><span>Números totales</span><strong>{{ rifa.cantidadBoletos }}</strong></div>
+              <p class="date-label">Sorteo: {{ rifa.fechaSorteo|replace('T', ' ')|replace('Z', ' UTC') }}</p>
+              <a class="button" href="{{ url_for('detalle_rifa', codigo=rifa.codigo) }}">Ver detalles <span aria-hidden="true">→</span></a>
+            </div>
+          </article>
+        {% endfor %}
+      </section>
+    {% endif %}
+  </main>
+  <footer><span>© {{ now_year if now_year else 2026 }} Alex-Rifas</span><span>Proyecto de Infraestructura y Seguridad Computacional</span></footer>
 </body>
 </html>
