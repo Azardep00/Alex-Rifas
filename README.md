@@ -1,4 +1,4 @@
-# Alex-Rifas
+# Alex-Rifas   
 
 Sistema de rifas en línea. Proyecto 03 de *Infraestructura y Seguridad Computacional* (Universidad de Ibagué):
 **aplicación multicontenedor con Docker Compose**.
