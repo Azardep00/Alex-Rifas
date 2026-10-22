@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Detalle de la rifa {{ rifa.titulo }}.">
+  <title>{{ rifa.titulo }} | Alex-Rifas</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="/"><span class="brand-mark">AR</span><span>Alex-Rifas</span></a><nav aria-label="Navegación principal"><a href="/">Rifas</a><a href="/visor/">Resultados</a></nav></header>
+  <main class="detail-page">
+    <a class="back-link" href="/">← Volver al catálogo</a>
+    <section class="detail-card">
+      <div class="detail-image">
+        {% if rifa.imagenUrl %}<img src="{{ rifa.imagenUrl }}" alt="Imagen de {{ rifa.titulo }}">
+        {% else %}<div class="image-placeholder large"><span>AR</span><small>Alex-Rifas</small></div>{% endif %}
+      </div>
+      <div class="detail-body">
+        <p class="eyebrow">RIFA {{ rifa.codigo }}</p><h1>{{ rifa.titulo }}</h1>
+        <p class="detail-description">{{ rifa.descripcion or 'Descubre los detalles de esta rifa.' }}</p>
+        <p class="detail-price">{{ rifa.precioBoleto }} {{ rifa.moneda }} <span>por boleto</span></p>
+        <div class="detail-stats"><div><span>Disponibles</span><strong>{{ rifa.disponibilidad.disponibles }}</strong></div><div><span>Reservados</span><strong>{{ rifa.disponibilidad.reservados }}</strong></div><div><span>Vendidos</span><strong>{{ rifa.disponibilidad.vendidos }}</strong></div></div>
+        <dl class="details-list">
+          <div><dt>Fecha del sorteo</dt><dd>{{ rifa.fechaSorteo|replace('T', ' ')|replace('Z', ' UTC') }}</dd></div>
+          <div><dt>Cierre de ventas</dt><dd>{{ rifa.cierreVentasEn|replace('T', ' ')|replace('Z', ' UTC') }}</dd></div>
+          <div><dt>Método</dt><dd>{{ rifa.metodoSorteo }}</dd></div>
+          {% if rifa.loteriaNombre %}<div><dt>Lotería</dt><dd>{{ rifa.loteriaNombre }}</dd></div>{% endif %}
+          <div><dt>Organizador</dt><dd>{{ rifa.organizador or 'Organizador de Alex-Rifas' }}</dd></div>
+        </dl>
+      </div>
+    </section>
+    {% if rifa.premios %}
+      <section class="prizes"><p class="eyebrow">LO QUE PUEDES GANAR</p><h2>Premios</h2><div class="prize-grid">
+      {% for premio in rifa.premios %}<article class="prize-card"><span class="prize-number">{{ premio.posicion }}</span><div><h3>{{ premio.nombre }}</h3>{% if premio.descripcion %}<p>{{ premio.descripcion }}</p>{% endif %}{% if premio.valorEstimado %}<small>Valor estimado: {{ premio.valorEstimado }} {{ rifa.moneda }}</small>{% endif %}</div></article>{% endfor %}
+      </div></section>
+    {% endif %}
+    <aside class="notice"><strong>¿Quieres reservar boletos?</strong><p>La reserva requiere una cuenta autenticada. El sitio público está conectado a la API; las operaciones de compra se administran en los endpoints protegidos.</p></aside>
+  </main>
+  <footer><span>© Alex-Rifas</span><span>Estado del servicio: {{ estado_api }}</span></footer>
+</body>
+</html>
