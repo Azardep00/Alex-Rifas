@@ -5,6 +5,11 @@ server:
 spring:
   application:
     name: alex-rifas-api
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/alexrifas}
     username: ${DB_USERNAME:alexrifas}
