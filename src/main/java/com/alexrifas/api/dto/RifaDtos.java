@@ -75,4 +75,11 @@ public final class RifaDtos {
                                  String entidadAutorizadora, Disponibilidad disponibilidad) {}
 
     public record Pagina<T>(List<T> contenido, int pagina, int tamano, long totalElementos, int totalPaginas) {}
+
+    /**
+     * Grilla compacta: {@code estados} tiene un carácter por número (posición = número del boleto):
+     * L = libre, R = reservado, V = vendido. 10 000 boletos pesan ~10 KB.
+     */
+    public record GrillaBoletos(String codigoRifa, int cantidad, Integer digitos, String estados,
+                                int libres, int reservados, int vendidos, java.time.Instant generadaEn) {}
 }

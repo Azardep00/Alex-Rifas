@@ -37,7 +37,6 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class CompraService {
     private static final Logger log = LoggerFactory.getLogger(CompraService.class);
-    private static final Duration RESERVA_DURACION = Duration.ofMinutes(15);
     private static final int MAX_NUMEROS_POR_SOLICITUD = 100;
 
     private final CompraRepository compras;
@@ -58,9 +57,37 @@ public class CompraService {
     @Transactional
     public CompraDtos.CompraResponse reservar(CompraDtos.ReservaRequest request, UsuarioAutenticado actor) {
         exigirCliente(actor);
-        List<Integer> numeros = validarNumeros(request.numeros());
+        return crearReserva(request.codigoRifa(), request.numeros(), actor.id(), null, null);
+    }
+
+    /** Reserva sin cuenta (ADR-04): se identifica por nombre + teléfono. */
+    @Transactional
+    public CompraDtos.ReservaPublicaResponse reservarInvitado(CompraDtos.ReservaPublicaRequest request) {
+        String telefono = TelefonoColombia.normalizar(request.telefono());
+        String nombre = request.nombre().trim().replaceAll("\\s+", " ");
+        if (nombre.length() < 2) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Escribe tu nombre.");
+        }
+        CompraDtos.CompraResponse creada = crearReserva(request.codigoRifa(), request.numeros(), null, nombre, telefono);
+        return aPublica(creada, nombre, telefono);
+    }
+
+    /** "Mi reserva": exige código y teléfono; si no coinciden responde 404 sin revelar si el código existe. */
+    @Transactional(readOnly = true)
+    public CompraDtos.ReservaPublicaResponse consultarInvitado(String codigo, String telefono) {
+        String telefonoNormalizado = TelefonoColombia.normalizar(telefono);
+        Compra compra = compras.findByCodigoAndCompradorTelefono(
+                codigo == null ? "" : codigo.trim().toUpperCase(Locale.ROOT), telefonoNormalizado)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "No encontramos una reserva con ese código y teléfono."));
+        return aPublica(respuestaConConsultas(compra), compra.getCompradorNombre(), compra.getCompradorTelefono());
+    }
+
+    private CompraDtos.CompraResponse crearReserva(String codigoRifa, List<Integer> numerosSolicitados,
+            Long usuarioId, String compradorNombre, String compradorTelefono) {
+        List<Integer> numeros = validarNumeros(numerosSolicitados);
         Instant ahora = Instant.now(clock);
-        Rifa rifa = rifas.findByCodigoPublico(request.codigoRifa().trim().toUpperCase(Locale.ROOT))
+        Rifa rifa = rifas.findByCodigoPublico(codigoRifa.trim().toUpperCase(Locale.ROOT))
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontró la rifa."));
         if (rifa.getEstado() != EstadoRifa.PUBLICADA) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La rifa no está disponible para reservar boletos.");
@@ -91,14 +118,16 @@ public class CompraService {
             }
         }
 
-        Instant vence = ahora.plus(RESERVA_DURACION);
+        Instant vence = ahora.plus(Duration.ofMinutes(rifa.getReservaMinutos()));
         if (rifa.getCierreVentasEn().isBefore(vence)) {
             vence = rifa.getCierreVentasEn();
         }
         Compra compra = new Compra();
         compra.setCodigo(UUID.randomUUID().toString().replace("-", "").toUpperCase(Locale.ROOT));
         compra.setRifaId(rifa.getId());
-        compra.setUsuarioId(actor.id());
+        compra.setUsuarioId(usuarioId);
+        compra.setCompradorNombre(compradorNombre);
+        compra.setCompradorTelefono(compradorTelefono);
         compra.setEstado(EstadoCompra.PENDIENTE);
         compra.setSubtotal(rifa.getPrecioBoleto().multiply(BigDecimal.valueOf(seleccionados.size())));
         compra.setExpiraEn(vence);
@@ -238,6 +267,11 @@ public class CompraService {
         List<Integer> numeros = boletosCompra.stream().map(Boleto::getNumero).sorted().toList();
         return new CompraDtos.CompraResponse(compra.getCodigo(), rifa.getCodigoPublico(), compra.getEstado(),
             numeros, compra.getSubtotal(), rifa.getMoneda(), compra.getExpiraEn(), compra.getCreadaEn(), compra.getActualizadaEn());
+    }
+
+    private CompraDtos.ReservaPublicaResponse aPublica(CompraDtos.CompraResponse c, String nombre, String telefono) {
+        return new CompraDtos.ReservaPublicaResponse(c.codigo(), c.codigoRifa(), c.estado(), c.numeros(),
+            c.subtotal(), c.moneda(), nombre, TelefonoColombia.enmascarar(telefono), c.expiraEn(), c.creadaEn());
     }
 
     private void exigirCliente(UsuarioAutenticado actor) {

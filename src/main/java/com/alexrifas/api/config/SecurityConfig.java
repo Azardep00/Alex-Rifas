@@ -47,6 +47,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,
                     "/api/auth/registro", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/rifas", "/api/rifas/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/publico/reservas").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/publico/reservas/*").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/organizador/**").hasAnyRole("ORGANIZADOR", "ADMIN")

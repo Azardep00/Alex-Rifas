@@ -14,6 +14,7 @@ import org.springframework.data.repository.query.Param;
 public interface CompraRepository extends JpaRepository<Compra, Long> {
     Optional<Compra> findByCodigo(String codigo);
     Optional<Compra> findByCodigoAndUsuarioId(String codigo, Long usuarioId);
+    Optional<Compra> findByCodigoAndCompradorTelefono(String codigo, String compradorTelefono);
     List<Compra> findByUsuarioIdOrderByCreadaEnDesc(Long usuarioId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
