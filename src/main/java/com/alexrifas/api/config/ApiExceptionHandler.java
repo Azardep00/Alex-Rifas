@@ -1,11 +1,13 @@
 package com.alexrifas.api.config;
 
 import com.alexrifas.api.service.RefreshTokenReutilizadoException;
+import com.alexrifas.api.service.ReservasPendientesExcedidasException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.time.Instant;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -22,6 +24,15 @@ public class ApiExceptionHandler {
     ResponseEntity<ErrorDto> handleStatus(ResponseStatusException ex, HttpServletRequest request) {
         HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
         return response(status, ex.getReason() == null ? status.getReasonPhrase() : ex.getReason(), request);
+    }
+
+    @ExceptionHandler(ReservasPendientesExcedidasException.class)
+    ResponseEntity<ErrorDto> handleLimite(ReservasPendientesExcedidasException ex, HttpServletRequest request) {
+        HttpStatus status = HttpStatus.TOO_MANY_REQUESTS;
+        return ResponseEntity.status(status)
+            .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSegundos()))
+            .body(new ErrorDto(Instant.now(), status.value(), status.getReasonPhrase(), ex.getReason(),
+                request.getRequestURI()));
     }
 
     @ExceptionHandler(RefreshTokenReutilizadoException.class)

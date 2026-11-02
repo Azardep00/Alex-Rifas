@@ -52,6 +52,10 @@ app:
     jwt-secret: ${JWT_SECRET:solo-para-desarrollo-cambiar-secreto-jwt-123456789}
     jwt-expiracion-minutos: ${JWT_EXPIRACION_MINUTOS:15}
     refresh-expiracion-dias: ${REFRESH_EXPIRACION_DIAS:7}
+  antiabuso:
+    max-pendientes-por-telefono: ${ANTIABUSO_MAX_PENDIENTES_TELEFONO:3}
+    max-pendientes-por-ip: ${ANTIABUSO_MAX_PENDIENTES_IP:5}
+    saltos-proxy: ${ANTIABUSO_SALTOS_PROXY:1}
 
 logging:
   pattern:

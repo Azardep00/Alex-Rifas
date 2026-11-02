@@ -17,7 +17,7 @@ class TelefonoColombiaTest {
 
     @Test
     void rechazaNumerosQueNoSonCelularColombiano() {
-        for (String malo : new String[] {null, "", "12345", "6012345678", "30012345678", "abc"}) {
+        for (String malo : new String[] {null, "", "12345", "6012345678", "30012345678", "abc", "3333333333", "+57 333 333 3333"}) {
             assertThrows(ResponseStatusException.class, () -> TelefonoColombia.normalizar(malo));
         }
     }

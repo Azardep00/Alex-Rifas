@@ -34,7 +34,7 @@ class CompraServiceTest {
         rifas = mock(RifaRepository.class);
         pagos = mock(PagoWompiRepository.class);
         Clock clock = Clock.fixed(Instant.parse("2026-10-22T12:00:00Z"), ZoneOffset.UTC);
-        servicio = new CompraService(compras, boletos, rifas, pagos, clock);
+        servicio = new CompraService(compras, boletos, rifas, pagos, mock(AntiabusoService.class), clock);
     }
 
     @Test

@@ -43,32 +43,34 @@ public class CompraService {
     private final BoletoRepository boletos;
     private final RifaRepository rifas;
     private final PagoWompiRepository pagos;
+    private final AntiabusoService antiabuso;
     private final Clock clock;
 
     public CompraService(CompraRepository compras, BoletoRepository boletos, RifaRepository rifas,
-                         PagoWompiRepository pagos, Clock clock) {
+                         PagoWompiRepository pagos, AntiabusoService antiabuso, Clock clock) {
         this.compras = compras;
         this.boletos = boletos;
         this.rifas = rifas;
         this.pagos = pagos;
+        this.antiabuso = antiabuso;
         this.clock = clock;
     }
 
     @Transactional
     public CompraDtos.CompraResponse reservar(CompraDtos.ReservaRequest request, UsuarioAutenticado actor) {
         exigirCliente(actor);
-        return crearReserva(request.codigoRifa(), request.numeros(), actor.id(), null, null);
+        return crearReserva(request.codigoRifa(), request.numeros(), actor.id(), null, null, null);
     }
 
     /** Reserva sin cuenta (ADR-04): se identifica por nombre + teléfono. */
     @Transactional
-    public CompraDtos.ReservaPublicaResponse reservarInvitado(CompraDtos.ReservaPublicaRequest request) {
+    public CompraDtos.ReservaPublicaResponse reservarInvitado(CompraDtos.ReservaPublicaRequest request, String ipCliente) {
         String telefono = TelefonoColombia.normalizar(request.telefono());
         String nombre = request.nombre().trim().replaceAll("\\s+", " ");
         if (nombre.length() < 2) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Escribe tu nombre.");
         }
-        CompraDtos.CompraResponse creada = crearReserva(request.codigoRifa(), request.numeros(), null, nombre, telefono);
+        CompraDtos.CompraResponse creada = crearReserva(request.codigoRifa(), request.numeros(), null, nombre, telefono, ipCliente);
         return aPublica(creada, nombre, telefono);
     }
 
@@ -84,7 +86,7 @@ public class CompraService {
     }
 
     private CompraDtos.CompraResponse crearReserva(String codigoRifa, List<Integer> numerosSolicitados,
-            Long usuarioId, String compradorNombre, String compradorTelefono) {
+            Long usuarioId, String compradorNombre, String compradorTelefono, String ipCliente) {
         List<Integer> numeros = validarNumeros(numerosSolicitados);
         Instant ahora = Instant.now(clock);
         Rifa rifa = rifas.findByCodigoPublico(codigoRifa.trim().toUpperCase(Locale.ROOT))
@@ -100,6 +102,31 @@ public class CompraService {
                 "Puedes reservar máximo " + rifa.getMaximoBoletosPorCompra() + " boletos por compra.");
         }
 
+        Instant vence = ahora.plus(Duration.ofMinutes(rifa.getReservaMinutos()));
+        if (rifa.getCierreVentasEn().isBefore(vence)) {
+            vence = rifa.getCierreVentasEn();
+        }
+        String codigoCompra = UUID.randomUUID().toString().replace("-", "").toUpperCase(Locale.ROOT);
+
+        // Antiabuso (ADR-05): solo aplica a invitados y va después de validar la solicitud, para que una
+        // petición inválida no consuma cupo, y antes de bloquear boletos.
+        boolean invitado = usuarioId == null;
+        if (invitado) {
+            antiabuso.verificarYRegistrar(codigoCompra, compradorTelefono, ipCliente, ahora, vence);
+        }
+        try {
+            return reservarBoletos(rifa, numeros, codigoCompra, usuarioId, compradorNombre, compradorTelefono,
+                ahora, vence);
+        } catch (RuntimeException ex) {
+            if (invitado) {
+                antiabuso.liberar(codigoCompra); // la reserva no se creó: devolver el cupo por IP
+            }
+            throw ex;
+        }
+    }
+
+    private CompraDtos.CompraResponse reservarBoletos(Rifa rifa, List<Integer> numeros, String codigoCompra,
+            Long usuarioId, String compradorNombre, String compradorTelefono, Instant ahora, Instant vence) {
         List<Boleto> seleccionados = boletos.findByRifaIdAndNumeroInForUpdate(rifa.getId(), numeros);
         if (seleccionados.size() != numeros.size()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Uno o más números no pertenecen a esta rifa.");
@@ -118,12 +145,8 @@ public class CompraService {
             }
         }
 
-        Instant vence = ahora.plus(Duration.ofMinutes(rifa.getReservaMinutos()));
-        if (rifa.getCierreVentasEn().isBefore(vence)) {
-            vence = rifa.getCierreVentasEn();
-        }
         Compra compra = new Compra();
-        compra.setCodigo(UUID.randomUUID().toString().replace("-", "").toUpperCase(Locale.ROOT));
+        compra.setCodigo(codigoCompra);
         compra.setRifaId(rifa.getId());
         compra.setUsuarioId(usuarioId);
         compra.setCompradorNombre(compradorNombre);
@@ -215,6 +238,7 @@ public class CompraService {
         compra.setEstado(EstadoCompra.CONFIRMADA);
         compra.setActualizadaEn(ahora);
         compras.save(compra);
+        antiabuso.liberar(compra.getCodigo()); // ya no está pendiente: libera su cupo por IP
         return new CompraDtos.ConfirmacionResponse(compra.getCodigo(), compra.getEstado(), referencia, ahora);
     }
 

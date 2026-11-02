@@ -12,7 +12,7 @@ public final class TelefonoColombia {
         if (digitos.startsWith("57") && digitos.length() == 12) {
             digitos = digitos.substring(2);
         }
-        if (!digitos.matches("3\\d{9}")) {
+        if (!digitos.matches("3\\d{9}") || digitos.matches("(\\d)\\1{9}")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                 "Escribe un celular colombiano válido de 10 dígitos (ej. 300 123 4567).");
         }

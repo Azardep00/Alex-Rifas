@@ -27,6 +27,9 @@ public interface BoletoRepository extends JpaRepository<Boleto, Long> {
     long countByRifaId(Long rifaId);
     void deleteByRifaId(Long rifaId);
     List<Boleto> findByCompraId(Long compraId);
+    List<Boleto> findByCompraIdIn(Collection<Long> compraIds);
+    /** Reservas vigentes (las vencidas que el job aún no procesó no cuentan). */
+    long countByRifaIdAndEstadoAndReservadoHastaAfter(Long rifaId, EstadoBoleto estado, Instant ahora);
     List<Boleto> findByRifaIdAndEstadoOrderByNumeroAsc(Long rifaId, EstadoBoleto estado);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
