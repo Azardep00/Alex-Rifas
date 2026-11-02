@@ -84,6 +84,10 @@ public class Rifa {
     @Column(name = "regla_vacante", nullable = false, length = 30)
     private ReglaVacante reglaVacante = ReglaVacante.REPETIR_SIGUIENTE_LOTERIA;
 
+    /** Lotería contra la que se juega (V3). Nulo en rifas ALEATORIO/MANUAL. */
+    @Column(name = "loteria_id")
+    private Long loteriaId;
+
     @Column(name = "creada_en", nullable = false)
     private Instant creadaEn;
 
@@ -133,6 +137,8 @@ public class Rifa {
     public void setReservaMinutos(int reservaMinutos) { this.reservaMinutos = reservaMinutos; }
     public Integer getDigitos() { return digitos; }
     public void setDigitos(Integer digitos) { this.digitos = digitos; }
+    public Long getLoteriaId() { return loteriaId; }
+    public void setLoteriaId(Long loteriaId) { this.loteriaId = loteriaId; }
     public ReglaVacante getReglaVacante() { return reglaVacante; }
     public void setReglaVacante(ReglaVacante reglaVacante) { this.reglaVacante = reglaVacante; }
     public Instant getCreadaEn() { return creadaEn; }

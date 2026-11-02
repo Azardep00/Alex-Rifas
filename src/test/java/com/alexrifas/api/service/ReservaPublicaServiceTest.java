@@ -57,7 +57,7 @@ class ReservaPublicaServiceTest {
         rifas = mock(RifaRepository.class);
         antiabuso = mock(AntiabusoService.class);
         servicio = new CompraService(compras, boletos, rifas, mock(PagoWompiRepository.class), antiabuso,
-            Clock.fixed(AHORA, ZoneOffset.UTC));
+            mock(AuditoriaService.class), Clock.fixed(AHORA, ZoneOffset.UTC));
 
         rifa = new Rifa();
         ReflectionTestUtils.setField(rifa, "id", 1L);

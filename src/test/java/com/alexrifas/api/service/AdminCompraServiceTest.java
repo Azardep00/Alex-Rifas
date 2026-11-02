@@ -29,6 +29,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,7 @@ class AdminCompraServiceTest {
     private BoletoRepository boletos;
     private RifaRepository rifas;
     private AntiabusoService antiabuso;
+    private AuditoriaService auditoria;
     private AdminCompraService servicio;
     private Rifa rifa;
 
@@ -57,7 +59,9 @@ class AdminCompraServiceTest {
         boletos = mock(BoletoRepository.class);
         rifas = mock(RifaRepository.class);
         antiabuso = mock(AntiabusoService.class);
-        servicio = new AdminCompraService(compras, boletos, rifas, antiabuso, Clock.fixed(AHORA, ZoneOffset.UTC));
+        auditoria = mock(AuditoriaService.class);
+        servicio = new AdminCompraService(compras, boletos, rifas, antiabuso, auditoria,
+            Clock.fixed(AHORA, ZoneOffset.UTC));
 
         rifa = new Rifa();
         ReflectionTestUtils.setField(rifa, "id", 10L);
@@ -189,6 +193,43 @@ class AdminCompraServiceTest {
         assertEquals(EstadoCompra.CANCELADA, respuesta.estado());
         verify(compras).save(c);
         verify(antiabuso).liberar("COD1");
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void liberarDejaRastroDeAuditoriaConElMotivoYLosBoletosLiberados() {
+        Compra c = compra(1, EstadoCompra.PENDIENTE);
+        Boleto b4 = boleto(4, EstadoBoleto.RESERVADO, 1L);
+        when(compras.findByCodigoForUpdate("COD1")).thenReturn(Optional.of(c));
+        when(boletos.findByCompraId(1L)).thenReturn(List.of(b4));
+        when(boletos.findByRifaIdAndNumeroInForUpdate(eq(10L), anyCollection())).thenReturn(List.of(b4));
+
+        servicio.liberar("COD1", new AdminDtos.LiberacionRequest("Pago no llegó"), ADMIN);
+
+        ArgumentCaptor<Map<String, Object>> detalles = ArgumentCaptor.forClass((Class) Map.class);
+        verify(auditoria).registrar(eq(ADMIN), eq("compra"), eq("COD1"), eq("RESERVA_LIBERADA"), detalles.capture());
+        assertEquals(1, detalles.getValue().get("boletosLiberados"));
+        assertEquals("Pago no llegó", detalles.getValue().get("motivo"));
+    }
+
+    @Test
+    void liberarSinMotivoAuditaConLaMarcaSinMotivo() {
+        Compra c = compra(1, EstadoCompra.PENDIENTE);
+        when(compras.findByCodigoForUpdate("COD1")).thenReturn(Optional.of(c));
+        when(boletos.findByCompraId(1L)).thenReturn(List.of());
+
+        servicio.liberar("COD1", null, ADMIN);
+
+        verify(auditoria).registrar(eq(ADMIN), eq("compra"), eq("COD1"), eq("RESERVA_LIBERADA"), any(Map.class));
+    }
+
+    @Test
+    void liberarQueFallaNoDejaRastroDeUnaAccionQueNoOcurrio() {
+        when(compras.findByCodigoForUpdate("COD1")).thenReturn(Optional.of(compra(1, EstadoCompra.CONFIRMADA)));
+
+        assertThrows(ResponseStatusException.class, () -> servicio.liberar("COD1", null, ADMIN));
+
+        verifyNoInteractions(auditoria);
     }
 
     @Test

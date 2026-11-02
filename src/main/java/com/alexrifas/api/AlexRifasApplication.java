@@ -9,9 +9,10 @@ import org.springframework.context.annotation.Bean;
 
 import com.alexrifas.api.config.AntiabusoProperties;
 import com.alexrifas.api.config.AppProperties;
+import com.alexrifas.api.config.LoteriasProperties;
 
 @SpringBootApplication
-@EnableConfigurationProperties({AppProperties.class, AntiabusoProperties.class})
+@EnableConfigurationProperties({AppProperties.class, AntiabusoProperties.class, LoteriasProperties.class})
 public class AlexRifasApplication {
     public static void main(String[] args) {
         SpringApplication.run(AlexRifasApplication.class, args);

@@ -44,15 +44,18 @@ public class CompraService {
     private final RifaRepository rifas;
     private final PagoWompiRepository pagos;
     private final AntiabusoService antiabuso;
+    private final AuditoriaService auditoria;
     private final Clock clock;
 
     public CompraService(CompraRepository compras, BoletoRepository boletos, RifaRepository rifas,
-                         PagoWompiRepository pagos, AntiabusoService antiabuso, Clock clock) {
+                         PagoWompiRepository pagos, AntiabusoService antiabuso, AuditoriaService auditoria,
+                         Clock clock) {
         this.compras = compras;
         this.boletos = boletos;
         this.rifas = rifas;
         this.pagos = pagos;
         this.antiabuso = antiabuso;
+        this.auditoria = auditoria;
         this.clock = clock;
     }
 
@@ -239,6 +242,13 @@ public class CompraService {
         compra.setActualizadaEn(ahora);
         compras.save(compra);
         antiabuso.liberar(compra.getCodigo()); // ya no está pendiente: libera su cupo por IP
+        Map<String, Object> rastro = new LinkedHashMap<>();
+        rastro.put("rifa", rifa.getCodigoPublico());
+        rastro.put("monto", compra.getSubtotal());
+        rastro.put("boletos", numeros);
+        rastro.put("metodo", request.metodo());
+        rastro.put("referencia", referencia);
+        auditoria.registrar(actor, "compra", compra.getCodigo(), "PAGO_CONFIRMADO_MANUAL", rastro);
         return new CompraDtos.ConfirmacionResponse(compra.getCodigo(), compra.getEstado(), referencia, ahora);
     }
 

@@ -56,6 +56,8 @@ app:
     max-pendientes-por-telefono: ${ANTIABUSO_MAX_PENDIENTES_TELEFONO:3}
     max-pendientes-por-ip: ${ANTIABUSO_MAX_PENDIENTES_IP:5}
     saltos-proxy: ${ANTIABUSO_SALTOS_PROXY:1}
+  loterias:
+    exigir-segundo-verificador: ${LOTERIAS_EXIGIR_SEGUNDO_VERIFICADOR:false}
 
 logging:
   pattern:
