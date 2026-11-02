@@ -25,8 +25,15 @@ public class Compra {
     @Column(name = "rifa_id", nullable = false)
     private Long rifaId;
 
-    @Column(name = "usuario_id", nullable = false)
+    /** Nulo cuando la compra la hizo un invitado (sin cuenta). */
+    @Column(name = "usuario_id")
     private Long usuarioId;
+
+    @Column(name = "comprador_nombre", length = 120)
+    private String compradorNombre;
+
+    @Column(name = "comprador_telefono", length = 30)
+    private String compradorTelefono;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -51,6 +58,10 @@ public class Compra {
     public void setRifaId(Long rifaId) { this.rifaId = rifaId; }
     public Long getUsuarioId() { return usuarioId; }
     public void setUsuarioId(Long usuarioId) { this.usuarioId = usuarioId; }
+    public String getCompradorNombre() { return compradorNombre; }
+    public void setCompradorNombre(String compradorNombre) { this.compradorNombre = compradorNombre; }
+    public String getCompradorTelefono() { return compradorTelefono; }
+    public void setCompradorTelefono(String compradorTelefono) { this.compradorTelefono = compradorTelefono; }
     public EstadoCompra getEstado() { return estado; }
     public void setEstado(EstadoCompra estado) { this.estado = estado; }
     public BigDecimal getSubtotal() { return subtotal; }

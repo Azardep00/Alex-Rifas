@@ -2,6 +2,7 @@ package com.alexrifas.api.entity;
 
 import com.alexrifas.api.model.EstadoRifa;
 import com.alexrifas.api.model.MetodoSorteo;
+import com.alexrifas.api.model.ReglaVacante;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -71,6 +72,18 @@ public class Rifa {
     @Column(name = "entidad_autorizadora", length = 120)
     private String entidadAutorizadora;
 
+    /** Minutos que dura una reserva pendiente de pago (pago manual necesita más que 15). */
+    @Column(name = "reserva_minutos", nullable = false)
+    private int reservaMinutos = 15;
+
+    /** Dígitos de la lotería que definen el ganador (2, 3 o 4). Nulo si la rifa no usa "últimos N dígitos". */
+    @Column(name = "digitos")
+    private Integer digitos;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "regla_vacante", nullable = false, length = 30)
+    private ReglaVacante reglaVacante = ReglaVacante.REPETIR_SIGUIENTE_LOTERIA;
+
     @Column(name = "creada_en", nullable = false)
     private Instant creadaEn;
 
@@ -116,6 +129,12 @@ public class Rifa {
     public void setNumeroAutorizacion(String numeroAutorizacion) { this.numeroAutorizacion = numeroAutorizacion; }
     public String getEntidadAutorizadora() { return entidadAutorizadora; }
     public void setEntidadAutorizadora(String entidadAutorizadora) { this.entidadAutorizadora = entidadAutorizadora; }
+    public int getReservaMinutos() { return reservaMinutos; }
+    public void setReservaMinutos(int reservaMinutos) { this.reservaMinutos = reservaMinutos; }
+    public Integer getDigitos() { return digitos; }
+    public void setDigitos(Integer digitos) { this.digitos = digitos; }
+    public ReglaVacante getReglaVacante() { return reglaVacante; }
+    public void setReglaVacante(ReglaVacante reglaVacante) { this.reglaVacante = reglaVacante; }
     public Instant getCreadaEn() { return creadaEn; }
     public void setCreadaEn(Instant creadaEn) { this.creadaEn = creadaEn; }
     public Instant getActualizadaEn() { return actualizadaEn; }

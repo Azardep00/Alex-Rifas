@@ -1,17 +1,3 @@
-# Alex-Rifas: aplicación multicontenedor (Proyecto 03 - Infraestructura y Seguridad Computacional)
-#
-# Levantar:   cp .env.example .env   (editar valores)   y luego   docker compose up -d --build
-# Detener:    docker compose down          (agrega -v para borrar también los volúmenes de datos)
-#
-# Arquitectura (3 redes, solo el proxy publica un puerto):
-#
-#   Internet --> proxy --> web (Python) ---> api (Spring Boot) --> postgres / redis / mongo
-#                     \--> visor (Node.js) -/        procesador (Python) <-- cola en redis
-#
-#   frontend : proxy, web, visor            (entrada web)
-#   backend  : proxy, web, visor, api       (el proxy debe alcanzar /api/ y los BFF)
-#   data     : api, procesador, bases       (internal: true; las bases no publican puertos)
-
 name: alex-rifas
 
 # Bloque reutilizable: reinicio automático, sin escalada de privilegios y logs con tope de tamaño.
