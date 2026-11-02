@@ -56,6 +56,11 @@ public class SorteoService {
         Rifa rifa = rifas.findById(rifaId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontró la rifa."));
         exigirPropietario(rifa, actor);
+        if (rifa.sorteaPorLoteria()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Esta rifa se sortea con el resultado de la lotería: un administrador debe usar «sortear por lotería». "
+                    + "El sorteo manual está desactivado para que nadie pueda escoger el número ganador.");
+        }
         if (rifa.getEstado() != EstadoRifa.CERRADA) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Cierra la rifa antes de ejecutar el sorteo.");
         }

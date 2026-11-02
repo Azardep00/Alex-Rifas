@@ -36,6 +36,17 @@ public class Ganador {
     @Column(name = "creado_en", nullable = false)
     private Instant creadoEn;
 
+    /** Resultado de lotería verificado que decidió este premio (nulo en sorteos ALEATORIO/MANUAL). */
+    @Column(name = "resultado_loteria_id")
+    private Long resultadoLoteriaId;
+
+    /** Número que salió de la lotería (últimos N dígitos); difiere del boleto si se adjudicó por cupo vacío. */
+    @Column(name = "numero_resultado")
+    private Integer numeroResultado;
+
+    @Column(name = "adjudicado_por_vacante", nullable = false)
+    private boolean adjudicadoPorVacante;
+
     public Long getId() { return id; }
     public Long getRifaId() { return rifaId; }
     public void setRifaId(Long rifaId) { this.rifaId = rifaId; }
@@ -49,4 +60,10 @@ public class Ganador {
     public void setResultadoJson(String resultadoJson) { this.resultadoJson = resultadoJson; }
     public Instant getCreadoEn() { return creadoEn; }
     public void setCreadoEn(Instant creadoEn) { this.creadoEn = creadoEn; }
+    public Long getResultadoLoteriaId() { return resultadoLoteriaId; }
+    public void setResultadoLoteriaId(Long resultadoLoteriaId) { this.resultadoLoteriaId = resultadoLoteriaId; }
+    public Integer getNumeroResultado() { return numeroResultado; }
+    public void setNumeroResultado(Integer numeroResultado) { this.numeroResultado = numeroResultado; }
+    public boolean isAdjudicadoPorVacante() { return adjudicadoPorVacante; }
+    public void setAdjudicadoPorVacante(boolean adjudicadoPorVacante) { this.adjudicadoPorVacante = adjudicadoPorVacante; }
 }

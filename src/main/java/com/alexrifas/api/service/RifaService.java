@@ -2,14 +2,17 @@ package com.alexrifas.api.service;
 
 import com.alexrifas.api.dto.RifaDtos;
 import com.alexrifas.api.entity.Boleto;
+import com.alexrifas.api.entity.Loteria;
 import com.alexrifas.api.entity.Premio;
 import com.alexrifas.api.entity.Rifa;
 import com.alexrifas.api.entity.Usuario;
 import com.alexrifas.api.model.EstadoBoleto;
 import com.alexrifas.api.model.EstadoRifa;
 import com.alexrifas.api.model.MetodoSorteo;
+import com.alexrifas.api.model.ReglaVacante;
 import com.alexrifas.api.model.Rol;
 import com.alexrifas.api.repository.BoletoRepository;
+import com.alexrifas.api.repository.LoteriaRepository;
 import com.alexrifas.api.repository.PremioRepository;
 import com.alexrifas.api.repository.RifaRepository;
 import com.alexrifas.api.repository.UsuarioRepository;
@@ -39,6 +42,9 @@ import org.springframework.web.server.ResponseStatusException;
 public class RifaService {
     static final int MAX_BOLETOS = 50_000;
     private static final int MIN_BOLETOS = 10;
+    static final int RESERVA_MINUTOS_POR_DEFECTO = 15;
+    static final int RESERVA_MINUTOS_MIN = 5;
+    static final int RESERVA_MINUTOS_MAX = 1440;
     private static final int LOTE_BOLETOS = 1_000;
     private static final int TAMANO_MAXIMO_PAGINA = 50;
     private static final String ALFABETO_CODIGO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sin 0/O/1/I
@@ -50,15 +56,17 @@ public class RifaService {
     private final PremioRepository premios;
     private final BoletoRepository boletos;
     private final UsuarioRepository usuarios;
+    private final LoteriaRepository loterias;
     private final Clock clock;
     private final SecureRandom aleatorio = new SecureRandom();
 
     public RifaService(RifaRepository rifas, PremioRepository premios, BoletoRepository boletos,
-                       UsuarioRepository usuarios, Clock clock) {
+                       UsuarioRepository usuarios, LoteriaRepository loterias, Clock clock) {
         this.rifas = rifas;
         this.premios = premios;
         this.boletos = boletos;
         this.usuarios = usuarios;
+        this.loterias = loterias;
         this.clock = clock;
     }
 
@@ -72,6 +80,7 @@ public class RifaService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Tu cuenta no está activa."));
         Instant ahora = Instant.now(clock);
         validarRifa(request, ahora);
+        Loteria loteria = validarConfiguracionLoteria(request);
 
         Rifa rifa = new Rifa();
         rifa.setCodigoPublico(generarCodigoUnico());
@@ -87,7 +96,11 @@ public class RifaService {
         rifa.setCierreVentasEn(request.cierreVentasEn());
         rifa.setMaximoBoletosPorCompra(request.maximoBoletosPorCompra());
         rifa.setMetodoSorteo(request.metodoSorteo());
-        rifa.setLoteriaNombre(textoOpcional(request.loteriaNombre()));
+        rifa.setLoteriaNombre(loteria != null ? loteria.getNombre() : textoOpcional(request.loteriaNombre()));
+        rifa.setLoteriaId(loteria == null ? null : loteria.getId());
+        rifa.setDigitos(loteria == null ? null : request.digitos());
+        rifa.setReglaVacante(request.reglaVacante() == null ? ReglaVacante.REPETIR_SIGUIENTE_LOTERIA : request.reglaVacante());
+        rifa.setReservaMinutos(request.reservaMinutos() == null ? RESERVA_MINUTOS_POR_DEFECTO : request.reservaMinutos());
         rifa.setNumeroAutorizacion(textoOpcional(request.numeroAutorizacion()));
         rifa.setEntidadAutorizadora(textoOpcional(request.entidadAutorizadora()));
         rifa.setCreadaEn(ahora);
@@ -225,7 +238,8 @@ public class RifaService {
             rifa.getImagenUrl(), rifa.getEstado(), rifa.getPrecioBoleto(), rifa.getMoneda(),
             rifa.getCantidadBoletos(), rifa.getFechaSorteo(), rifa.getCierreVentasEn(),
             rifa.getMaximoBoletosPorCompra(), rifa.getMetodoSorteo(), rifa.getLoteriaNombre(),
-            nombreOrganizador(rifa.getOrganizadorId()), disponibilidad(rifa.getId()), listaPremios);
+            nombreOrganizador(rifa.getOrganizadorId()), disponibilidad(rifa.getId()), listaPremios,
+            rifa.getDigitos(), rifa.getReglaVacante(), rifa.getReservaMinutos());
     }
 
     // ------------------------------------------------------------------ validaciones y utilidades
@@ -266,10 +280,45 @@ public class RifaService {
         if (r.metodoSorteo() == null) {
             throw solicitudInvalida("El método de sorteo es obligatorio.");
         }
-        if (r.metodoSorteo() == MetodoSorteo.LOTERIA
-                && (r.loteriaNombre() == null || r.loteriaNombre().isBlank())) {
-            throw solicitudInvalida("Indica el nombre de la lotería con la que se definirá el sorteo.");
+        if (r.reservaMinutos() != null
+                && (r.reservaMinutos() < RESERVA_MINUTOS_MIN || r.reservaMinutos() > RESERVA_MINUTOS_MAX)) {
+            throw solicitudInvalida("La reserva debe durar entre " + RESERVA_MINUTOS_MIN + " y "
+                + RESERVA_MINUTOS_MAX + " minutos.");
         }
+    }
+
+    /**
+     * Configuración de sorteo por lotería (ADR-06 y ADR-07). Con método LOTERIA son obligatorios la lotería del
+     * catálogo (activa) y los dígitos, y la cantidad de boletos debe ser exactamente 10^dígitos para que el
+     * resultado caiga 1 a 1 en un boleto. Con otro método, esos dos campos no aplican y se rechazan.
+     *
+     * @return la lotería elegida, o {@code null} si el método no es LOTERIA
+     */
+    private Loteria validarConfiguracionLoteria(RifaDtos.RifaRequest r) {
+        if (r.metodoSorteo() != MetodoSorteo.LOTERIA) {
+            if (r.loteriaId() != null || r.digitos() != null) {
+                throw solicitudInvalida("La lotería y los dígitos solo aplican cuando el método de sorteo es LOTERIA.");
+            }
+            return null;
+        }
+        if (r.loteriaId() == null) {
+            throw solicitudInvalida("Elige la lotería del catálogo con la que se definirá el sorteo.");
+        }
+        if (r.digitos() == null || r.digitos() < 2 || r.digitos() > 4) {
+            throw solicitudInvalida("Los dígitos de la lotería deben ser 2, 3 o 4.");
+        }
+        int esperados = (int) Math.pow(10, r.digitos());
+        if (r.cantidadBoletos() != esperados) {
+            throw solicitudInvalida("Con los últimos " + r.digitos() + " dígitos la rifa debe tener exactamente "
+                + esperados + " boletos (números del 0 al " + (esperados - 1) + ").");
+        }
+        Loteria loteria = loterias.findById(r.loteriaId())
+            .orElseThrow(() -> solicitudInvalida("La lotería indicada no existe."));
+        if (!loteria.isActiva()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "La lotería «" + loteria.getNombre() + "» está inactiva; elige otra o actívala.");
+        }
+        return loteria;
     }
 
     /** Las imágenes se muestran en el sitio web, cuyo CSP solo admite https. */
@@ -343,7 +392,8 @@ public class RifaService {
             rifa.getEstado(), rifa.getPrecioBoleto(), rifa.getMoneda(), rifa.getCantidadBoletos(),
             rifa.getFechaSorteo(), rifa.getCierreVentasEn(), rifa.getMaximoBoletosPorCompra(),
             rifa.getMetodoSorteo(), rifa.getNumeroAutorizacion(), rifa.getEntidadAutorizadora(),
-            disponibilidad(rifa.getId()));
+            disponibilidad(rifa.getId()), rifa.getLoteriaId(), rifa.getDigitos(), rifa.getReglaVacante(),
+            rifa.getReservaMinutos());
     }
 
     private RifaDtos.PremioDto premioDto(Premio premio) {

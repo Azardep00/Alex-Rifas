@@ -1,6 +1,10 @@
 package com.alexrifas.api.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -29,6 +33,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.web.server.ResponseStatusException;
 
 class SorteoServiceTest {
     private RifaRepository rifas;
@@ -78,5 +83,55 @@ class SorteoServiceTest {
         assertEquals(EstadoRifa.SORTEADA, rifa.getEstado());
         verify(ganadores).saveAll(any());
         verify(eventos).publishEvent(any(SorteoProcesadoEvent.class));
+    }
+
+    @Test
+    void elSorteoManualEstaDesactivadoParaUnaRifaConfiguradaPorLoteria() {
+        Rifa rifa = new Rifa();
+        rifa.setOrganizadorId(12L);
+        rifa.setCantidadBoletos(100);
+        rifa.setEstado(EstadoRifa.CERRADA);
+        rifa.setMetodoSorteo(MetodoSorteo.LOTERIA);
+        rifa.setLoteriaId(5L);
+        rifa.setDigitos(2);
+        when(rifas.findById(3L)).thenReturn(Optional.of(rifa));
+
+        // Ni el organizador dueño ni un administrador pueden escribir el número a mano.
+        for (var actor : List.of(new UsuarioAutenticado(12L, Rol.ORGANIZADOR), new UsuarioAutenticado(1L, Rol.ADMIN))) {
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> servicio.sortear(3L, new SorteoDtos.SorteoRequest(List.of(7)), actor));
+            assertEquals(409, ex.getStatusCode().value());
+            // Debe fallar por la regla de lotería y no por otra causa (premios, vendidos...).
+            org.junit.jupiter.api.Assertions.assertTrue(ex.getReason().contains("resultado de la lotería"));
+        }
+        assertEquals(EstadoRifa.CERRADA, rifa.getEstado());
+        verify(ganadores, never()).saveAll(anyList());
+        verifyNoInteractions(eventos);
+    }
+
+    @Test
+    void unaRifaLoteriaAntiguaSinDigitosSigueConElSorteoManual() {
+        Rifa rifa = new Rifa();
+        rifa.setCodigoPublico("OLD123");
+        rifa.setOrganizadorId(12L);
+        rifa.setCantidadBoletos(10);
+        rifa.setEstado(EstadoRifa.CERRADA);
+        rifa.setMetodoSorteo(MetodoSorteo.LOTERIA);
+        rifa.setLoteriaId(5L); // la migración V3 la enlazó por nombre, pero no tiene dígitos
+        when(rifas.findById(3L)).thenReturn(Optional.of(rifa));
+        Premio premio = new Premio();
+        premio.setPosicion(1);
+        premio.setNombre("Bono");
+        when(premios.findByRifaIdOrderByPosicionAsc(3L)).thenReturn(List.of(premio));
+        Boleto boleto = new Boleto();
+        boleto.setNumero(4);
+        boleto.setEstado(EstadoBoleto.VENDIDO);
+        when(boletos.findByRifaIdAndEstadoOrderByNumeroAsc(3L, EstadoBoleto.VENDIDO)).thenReturn(List.of(boleto));
+
+        var resultado = servicio.sortear(3L, new SorteoDtos.SorteoRequest(List.of(4)),
+            new UsuarioAutenticado(12L, Rol.ORGANIZADOR));
+
+        assertEquals(4, resultado.get(0).numeroBoleto());
+        assertEquals(EstadoRifa.SORTEADA, rifa.getEstado());
     }
 }

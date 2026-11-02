@@ -6,6 +6,7 @@ import com.alexrifas.api.dto.RifaDtos;
 import com.alexrifas.api.entity.Loteria;
 import com.alexrifas.api.entity.ResultadoLoteria;
 import com.alexrifas.api.model.EstadoResultado;
+import com.alexrifas.api.repository.GanadorRepository;
 import com.alexrifas.api.repository.LoteriaRepository;
 import com.alexrifas.api.repository.ResultadoLoteriaRepository;
 import com.alexrifas.api.security.UsuarioAutenticado;
@@ -26,7 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Resultados de lotería cargados a mano (CP-08): cargar → verificar → (anular). Todo queda en
- * {@code auditoria_eventos}. Solo un resultado VERIFICADO podrá usarse para sortear una rifa (CP-09).
+ * {@code auditoria_eventos}. Solo un resultado VERIFICADO se usa para sortear una rifa (CP-09), y uno que ya decidió un premio no se puede anular.
  */
 @Service
 public class ResultadoLoteriaService {
@@ -35,14 +36,17 @@ public class ResultadoLoteriaService {
 
     private final LoteriaRepository loterias;
     private final ResultadoLoteriaRepository resultados;
+    private final GanadorRepository ganadores;
     private final AuditoriaService auditoria;
     private final LoteriasProperties propiedades;
     private final Clock clock;
 
     public ResultadoLoteriaService(LoteriaRepository loterias, ResultadoLoteriaRepository resultados,
-                                   AuditoriaService auditoria, LoteriasProperties propiedades, Clock clock) {
+                                   GanadorRepository ganadores, AuditoriaService auditoria,
+                                   LoteriasProperties propiedades, Clock clock) {
         this.loterias = loterias;
         this.resultados = resultados;
+        this.ganadores = ganadores;
         this.auditoria = auditoria;
         this.propiedades = propiedades;
         this.clock = clock;
@@ -145,9 +149,15 @@ public class ResultadoLoteriaService {
     @Transactional
     public LoteriaDtos.ResultadoDto anular(Long id, LoteriaDtos.AnularResultadoRequest request, UsuarioAutenticado actor) {
         SoloAdmin.exigir(actor);
-        ResultadoLoteria resultado = buscar(id);
+        // Con bloqueo: un sorteo por lotería en curso espera a que esto termine (o viceversa).
+        ResultadoLoteria resultado = resultados.findByIdParaActualizar(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontró el resultado."));
         if (resultado.getEstado() == EstadoResultado.ANULADO) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este resultado ya está anulado.");
+        }
+        if (ganadores.existsByResultadoLoteriaId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Este resultado ya decidió un premio de una rifa sorteada; no se puede anular.");
         }
         String motivo = request == null ? null : LoteriaService.textoOpcional(request.motivo());
         if (motivo == null || motivo.length() < 5) {

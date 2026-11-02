@@ -25,6 +25,8 @@
           <div><dt>Cierre de ventas</dt><dd>{{ rifa.cierreVentasEn|replace('T', ' ')|replace('Z', ' UTC') }}</dd></div>
           <div><dt>Método</dt><dd>{{ rifa.metodoSorteo }}</dd></div>
           {% if rifa.loteriaNombre %}<div><dt>Lotería</dt><dd>{{ rifa.loteriaNombre }}</dd></div>{% endif %}
+          {% if rifa.digitos %}<div><dt>Número ganador</dt><dd>Últimos {{ rifa.digitos }} dígitos del resultado de la lotería</dd></div>
+          <div><dt>Si el número no se vendió</dt><dd>{% if rifa.reglaVacante == 'ADJUDICAR_SIGUIENTE_VENDIDO' %}El premio pasa al siguiente número vendido (en orden ascendente){% else %}Se repite con el resultado del siguiente sorteo de la misma lotería{% endif %}</dd></div>{% endif %}
           <div><dt>Organizador</dt><dd>{{ rifa.organizador or 'Organizador de Alex-Rifas' }}</dd></div>
         </dl>
       </div>

@@ -2,6 +2,7 @@ package com.alexrifas.api.dto;
 
 import com.alexrifas.api.model.EstadoRifa;
 import com.alexrifas.api.model.MetodoSorteo;
+import com.alexrifas.api.model.ReglaVacante;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
@@ -37,7 +38,16 @@ public final class RifaDtos {
         @NotNull(message = "El método de sorteo es obligatorio.") MetodoSorteo metodoSorteo,
         @Size(max = 80, message = "El nombre de la lotería no puede superar 80 caracteres.") String loteriaNombre,
         @Size(max = 60, message = "El número de autorización no puede superar 60 caracteres.") String numeroAutorizacion,
-        @Size(max = 120, message = "La entidad autorizadora no puede superar 120 caracteres.") String entidadAutorizadora) {}
+        @Size(max = 120, message = "La entidad autorizadora no puede superar 120 caracteres.") String entidadAutorizadora,
+        // --- CP-09 (opcionales; al final para no romper el orden del contrato) ---
+        /** Lotería del catálogo contra la que se juega. Obligatoria si el método es LOTERIA. */
+        Long loteriaId,
+        /** Últimos 2, 3 o 4 dígitos del número mayor. Obligatorio si el método es LOTERIA; cantidadBoletos = 10^digitos. */
+        Integer digitos,
+        /** Qué hacer si el número cae en un boleto no vendido. Por defecto REPETIR_SIGUIENTE_LOTERIA. */
+        ReglaVacante reglaVacante,
+        /** Minutos que dura una reserva pendiente de pago (5 a 1440). Por defecto 15. */
+        Integer reservaMinutos) {}
 
     public record PremioRequest(
         @NotNull(message = "La posición del premio es obligatoria.")
@@ -65,14 +75,17 @@ public final class RifaDtos {
                               EstadoRifa estado, BigDecimal precioBoleto, String moneda, int cantidadBoletos,
                               Instant fechaSorteo, Instant cierreVentasEn, int maximoBoletosPorCompra,
                               MetodoSorteo metodoSorteo, String loteriaNombre, String organizador,
-                              Disponibilidad disponibilidad, List<PremioDto> premios) {}
+                              Disponibilidad disponibilidad, List<PremioDto> premios,
+                              Integer digitos, ReglaVacante reglaVacante, int reservaMinutos) {}
 
     /** Vista para organizadores y administradores: incluye el id interno que usan los endpoints de gestión. */
     public record RifaGestionDto(Long id, String codigo, String titulo, EstadoRifa estado,
                                  BigDecimal precioBoleto, String moneda, int cantidadBoletos,
                                  Instant fechaSorteo, Instant cierreVentasEn, int maximoBoletosPorCompra,
                                  MetodoSorteo metodoSorteo, String numeroAutorizacion,
-                                 String entidadAutorizadora, Disponibilidad disponibilidad) {}
+                                 String entidadAutorizadora, Disponibilidad disponibilidad,
+                                 Long loteriaId, Integer digitos, ReglaVacante reglaVacante,
+                                 int reservaMinutos) {}
 
     public record Pagina<T>(List<T> contenido, int pagina, int tamano, long totalElementos, int totalPaginas) {}
 

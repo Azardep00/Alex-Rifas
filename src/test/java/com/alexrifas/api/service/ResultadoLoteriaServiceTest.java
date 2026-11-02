@@ -19,6 +19,7 @@ import com.alexrifas.api.entity.ResultadoLoteria;
 import com.alexrifas.api.model.EstadoResultado;
 import com.alexrifas.api.model.Rol;
 import com.alexrifas.api.model.TipoLoteria;
+import com.alexrifas.api.repository.GanadorRepository;
 import com.alexrifas.api.repository.LoteriaRepository;
 import com.alexrifas.api.repository.ResultadoLoteriaRepository;
 import com.alexrifas.api.security.UsuarioAutenticado;
@@ -48,6 +49,7 @@ class ResultadoLoteriaServiceTest {
 
     private LoteriaRepository loterias;
     private ResultadoLoteriaRepository resultados;
+    private GanadorRepository ganadores;
     private AuditoriaService auditoria;
     private Loteria bogota;
 
@@ -55,6 +57,7 @@ class ResultadoLoteriaServiceTest {
     void setUp() {
         loterias = mock(LoteriaRepository.class);
         resultados = mock(ResultadoLoteriaRepository.class);
+        ganadores = mock(GanadorRepository.class);
         auditoria = mock(AuditoriaService.class);
         bogota = new Loteria();
         ReflectionTestUtils.setField(bogota, "id", 5L);
@@ -73,7 +76,7 @@ class ResultadoLoteriaServiceTest {
     }
 
     private ResultadoLoteriaService servicio(boolean exigirSegundoVerificador) {
-        return new ResultadoLoteriaService(loterias, resultados, auditoria,
+        return new ResultadoLoteriaService(loterias, resultados, ganadores, auditoria,
             new LoteriasProperties(exigirSegundoVerificador), Clock.fixed(AHORA, ZoneOffset.UTC));
     }
 
@@ -92,6 +95,7 @@ class ResultadoLoteriaServiceTest {
         r.setEstado(estado);
         r.setCargadoPor(cargadoPor);
         when(resultados.findById(id)).thenReturn(Optional.of(r));
+        when(resultados.findByIdParaActualizar(id)).thenReturn(Optional.of(r));
         return r;
     }
 
@@ -169,7 +173,7 @@ class ResultadoLoteriaServiceTest {
     @Test
     void laFechaDeHoyEsLaDeColombiaNoLaDeUtc() {
         // 03:00 UTC del 3-nov son las 22:00 del 2-nov en Colombia: el 3-nov todavía es futuro.
-        var servicioNocturno = new ResultadoLoteriaService(loterias, resultados, auditoria, new LoteriasProperties(false),
+        var servicioNocturno = new ResultadoLoteriaService(loterias, resultados, ganadores, auditoria, new LoteriasProperties(false),
             Clock.fixed(Instant.parse("2026-11-03T03:00:00Z"), ZoneOffset.UTC));
 
         assertEquals(400, estado(() -> servicioNocturno.cargar(5L, carga(LocalDate.of(2026, 11, 3), "8954"), ADMIN)));
@@ -300,6 +304,29 @@ class ResultadoLoteriaServiceTest {
             detalles.capture());
         assertEquals("VERIFICADO", detalles.getValue().get("estadoAnterior"));
         assertEquals("Número mal copiado", detalles.getValue().get("motivo"));
+    }
+
+    @Test
+    void noSePuedeAnularUnResultadoQueYaDecidioUnPremio() {
+        ResultadoLoteria r = resultado(70L, EstadoResultado.VERIFICADO, 1L);
+        when(ganadores.existsByResultadoLoteriaId(70L)).thenReturn(true);
+
+        assertEquals(409, estado(() ->
+            servicio(false).anular(70L, new LoteriaDtos.AnularResultadoRequest("Número mal copiado"), OTRO_ADMIN)));
+
+        assertEquals(EstadoResultado.VERIFICADO, r.getEstado());
+        verify(resultados, never()).save(any(ResultadoLoteria.class));
+        verifyNoInteractions(auditoria);
+    }
+
+    @Test
+    void unResultadoSinPremiosSigueSiendoAnulable() {
+        resultado(70L, EstadoResultado.VERIFICADO, 1L);
+        when(ganadores.existsByResultadoLoteriaId(70L)).thenReturn(false);
+
+        var dto = servicio(false).anular(70L, new LoteriaDtos.AnularResultadoRequest("Número mal copiado"), OTRO_ADMIN);
+
+        assertEquals(EstadoResultado.ANULADO, dto.estado());
     }
 
     @Test

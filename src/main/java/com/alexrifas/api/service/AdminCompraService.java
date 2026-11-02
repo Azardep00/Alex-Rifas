@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -45,14 +46,16 @@ public class AdminCompraService {
     private final BoletoRepository boletos;
     private final RifaRepository rifas;
     private final AntiabusoService antiabuso;
+    private final AuditoriaService auditoria;
     private final Clock clock;
 
     public AdminCompraService(CompraRepository compras, BoletoRepository boletos, RifaRepository rifas,
-                              AntiabusoService antiabuso, Clock clock) {
+                              AntiabusoService antiabuso, AuditoriaService auditoria, Clock clock) {
         this.compras = compras;
         this.boletos = boletos;
         this.rifas = rifas;
         this.antiabuso = antiabuso;
+        this.auditoria = auditoria;
         this.clock = clock;
     }
 
@@ -134,6 +137,11 @@ public class AdminCompraService {
         compra.setActualizadaEn(ahora);
         compras.save(compra);
         antiabuso.liberar(compra.getCodigo()); // devuelve el cupo por IP (CP-05)
+        Map<String, Object> rastro = new LinkedHashMap<>();
+        rastro.put("rifa", compra.getRifaId());
+        rastro.put("boletosLiberados", liberados);
+        rastro.put("motivo", motivoParaLog(request));
+        auditoria.registrar(actor, "compra", compra.getCodigo(), "RESERVA_LIBERADA", rastro);
         log.info("Compra {} liberada por el administrador {} ({} boletos). Motivo: {}", compra.getCodigo(),
             actor.id(), liberados, motivoParaLog(request));
         return new AdminDtos.LiberacionResponse(compra.getCodigo(), compra.getEstado(), liberados, ahora);

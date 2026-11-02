@@ -100,6 +100,14 @@ public class Rifa {
     @Version
     private Long version;
 
+    /**
+     * ¿El ganador lo decide el resultado de una lotería del catálogo (CP-09)? Las rifas LOTERIA antiguas, sin
+     * {@code loteriaId} o sin {@code digitos}, siguen con el sorteo manual.
+     */
+    public boolean sorteaPorLoteria() {
+        return metodoSorteo == MetodoSorteo.LOTERIA && loteriaId != null && digitos != null;
+    }
+
     public Long getId() { return id; }
     public String getCodigoPublico() { return codigoPublico; }
     public void setCodigoPublico(String codigoPublico) { this.codigoPublico = codigoPublico; }
