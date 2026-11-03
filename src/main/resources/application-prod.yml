@@ -1,0 +1,63 @@
+# Perfil de producción (CP-20). Se activa con SPRING_PROFILES_ACTIVE=prod.
+# Todo lo sensible llega por variables de entorno y NO tiene valor por omisión:
+# si falta DB_URL, DB_USERNAME, DB_PASSWORD o JWT_SECRET, la API no arranca (falla rápido y con mensaje claro).
+# Se combina con application.yml: aquí solo va lo que cambia respecto a la base.
+
+server:
+  port: ${PORT:8080}                  # Render y otros hosts inyectan PORT
+  shutdown: graceful
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
+
+spring:
+  datasource:
+    # Postgres externo, formato JDBC: jdbc:postgresql://HOST:5432/BD?sslmode=require
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:5}   # planes gratis: pocas conexiones permitidas
+      minimum-idle: 1
+      connection-timeout: 20000
+      initialization-fail-timeout: 30000    # tolera una BD que está despertando
+      keepalive-time: 120000
+      max-lifetime: 600000                  # menor que el corte por inactividad de la mayoría de proveedores
+  data:
+    redis:
+      ssl:
+        enabled: ${REDIS_SSL:false}
+      timeout: 2s                           # Redis es opcional: si no responde, la API sigue (antiabuso y caché degradan)
+      connect-timeout: 2s
+  jpa:
+    show-sql: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  health:
+    redis:
+      # Redis es opcional en producción: sin Redis, /actuator/health NO debe caer a DOWN.
+      enabled: ${HEALTH_REDIS_ENABLED:false}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+app:
+  seguridad:
+    jwt-secret: ${JWT_SECRET}
+  antiabuso:
+    # Vercel (rewrite) -> proxy del host -> API: 2 saltos de confianza. Con valores mayores al largo real de
+    # X-Forwarded-For se usa la primera IP, así que 2 es seguro. Ver docs/DESPLIEGUE.md.
+    saltos-proxy: ${ANTIABUSO_SALTOS_PROXY:2}
+
+logging:
+  level:
+    root: INFO
+    com.alexrifas: INFO

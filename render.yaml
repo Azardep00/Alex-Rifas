@@ -1,0 +1,33 @@
+# Blueprint de Render (CP-20). Crea SOLO la API; la base de datos es externa (Neon, Supabase, etc.)
+# porque el Postgres gratis de Render expira a los 30 días.
+# Los valores con sync:false se piden en el panel la primera vez; nunca se guardan en Git.
+services:
+  - type: web
+    name: alex-rifas-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    autoDeploy: true
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: JAVA_OPTS
+        value: "-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError -Xss512k"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: ADMIN_CORREO
+        sync: false
+      - key: ADMIN_CONTRASENA
+        sync: false
+      # Opcionales (Redis): sin ellos la API funciona; el tope por IP y la caché de la grilla se omiten.
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PASSWORD
+        sync: false

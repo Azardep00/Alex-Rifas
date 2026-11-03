@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main, v2]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # 1) Pruebas unitarias (JUnit). Usan H2/mocks: rápidas, pero NO validan Flyway.
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: mvn verify
+        run: mvn -B verify
+
+  # 2) Humo contra Postgres y Redis REALES con el perfil prod: valida las migraciones Flyway V1..V4,
+  #    el arranque con ddl-auto=validate, el admin inicial y el login (cierra la brecha n.º 6 del plan).
+  humo-postgres:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: alexrifas
+          POSTGRES_USER: alexrifas
+          POSTGRES_PASSWORD: clave-solo-para-ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U alexrifas -d alexrifas"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://localhost:5432/alexrifas
+      DB_USERNAME: alexrifas
+      DB_PASSWORD: clave-solo-para-ci
+      JWT_SECRET: secreto-solo-para-ci-de-mas-de-32-caracteres-0123456789
+      REDIS_HOST: localhost
+      HEALTH_REDIS_ENABLED: 'true'
+      ADMIN_CORREO: admin-ci@alexrifas.local
+      ADMIN_CONTRASENA: clave-admin-solo-ci-123
+      PORT: '8080'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Empaquetar
+        run: mvn -B -q -DskipTests package && cp target/alex-rifas-api-*.jar app.jar
+      - name: Arrancar la API (perfil prod)
+        run: nohup java -jar app.jar > api.log 2>&1 &
+      - name: Esperar /actuator/health
+        run: |
+          for i in $(seq 1 45); do
+            if curl -fsS http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then echo "API arriba tras ~$((i*2)) s"; exit 0; fi
+            sleep 2
+          done
+          echo "La API no llegó a UP"; tail -n 80 api.log; exit 1
+      - name: Endpoint público responde
+        run: curl -fsS "http://localhost:8080/api/rifas?pagina=0&tamano=1" > /dev/null
+      - name: Login del admin inicial
+        run: |
+          curl -fsS -X POST http://localhost:8080/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"correo":"admin-ci@alexrifas.local","contrasena":"clave-admin-solo-ci-123"}' | grep -q accessToken
+      - name: Swagger no debe estar expuesto en prod
+        run: test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/swagger-ui/index.html)" != "200"
+      - name: Log de la API si algo falló
+        if: failure()
+        run: tail -n 120 api.log
