@@ -66,6 +66,13 @@ public class AdminCompraService {
     @Transactional(readOnly = true)
     public RifaDtos.Pagina<AdminDtos.CompraAdminDto> listar(UsuarioAutenticado actor, EstadoCompra estado,
             String codigoRifa, String telefono, int pagina, int tamano) {
+        return listar(actor, estado, codigoRifa, telefono, null, pagina, tamano);
+    }
+
+    /** Igual que arriba, y con {@code numero} solo salen las compras que tienen ese número ahora mismo (CP-18). */
+    @Transactional(readOnly = true)
+    public RifaDtos.Pagina<AdminDtos.CompraAdminDto> listar(UsuarioAutenticado actor, EstadoCompra estado,
+            String codigoRifa, String telefono, Integer numero, int pagina, int tamano) {
         exigirAdmin(actor);
         Long rifaId = null;
         if (codigoRifa != null && !codigoRifa.isBlank()) {
@@ -81,6 +88,10 @@ public class AdminCompraService {
         int p = Math.max(pagina, 0);
         int t = Math.min(Math.max(tamano, 1), TAMANO_MAXIMO_PAGINA);
 
+        final List<Long> idsPorNumero = numero == null ? null : boletos.findCompraIdsByNumero(numero);
+        if (idsPorNumero != null && idsPorNumero.isEmpty()) {
+            return new RifaDtos.Pagina<>(List.of(), p, t, 0, 0);
+        }
         final Long rifaFiltro = rifaId;
         Specification<Compra> filtro = (root, query, cb) -> {
             List<Predicate> condiciones = new ArrayList<>();
@@ -92,6 +103,9 @@ public class AdminCompraService {
             }
             if (telefonoNormalizado != null) {
                 condiciones.add(cb.equal(root.get("compradorTelefono"), telefonoNormalizado));
+            }
+            if (idsPorNumero != null) {
+                condiciones.add(root.get("id").in(idsPorNumero));
             }
             return cb.and(condiciones.toArray(Predicate[]::new));
         };

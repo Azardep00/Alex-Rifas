@@ -169,6 +169,22 @@ class AdminCompraServiceTest {
             () -> servicio.listar(ADMIN, null, null, "12345", 0, 20)).getStatusCode().value());
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void listarPorNumeroBuscaLasComprasQueLoTienenYSinCoincidenciasNoConsultaCompras() {
+        when(boletos.findCompraIdsByNumero(99)).thenReturn(List.of());
+        var vacia = servicio.listar(ADMIN, null, null, null, 99, 0, 20);
+        assertEquals(0, vacia.totalElementos());
+        verify(compras, never()).findAll(any(Specification.class), any(Pageable.class));
+
+        Compra c1 = compra(1, EstadoCompra.PENDIENTE);
+        when(boletos.findCompraIdsByNumero(7)).thenReturn(List.of(1L));
+        when(compras.findAll(any(Specification.class), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(c1)));
+        when(boletos.findByCompraIdIn(anyCollection())).thenReturn(List.of(boleto(7, EstadoBoleto.RESERVADO, 1L)));
+        when(rifas.findAllById(anyCollection())).thenReturn(List.of(rifa));
+        assertEquals(1, servicio.listar(ADMIN, null, null, null, 7, 0, 20).contenido().size());
+    }
+
     // ---- liberar ----
 
     @Test

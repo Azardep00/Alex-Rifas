@@ -28,16 +28,17 @@ public class AdminCompraController {
         this.admin = admin;
     }
 
-    /** Cola de pagos: {@code ?estado=PENDIENTE&rifa=ABC123&telefono=300 123 4567&pagina=0&tamano=20} (todo opcional). */
+    /** Cola de pagos: {@code ?estado=PENDIENTE&rifa=ABC123&telefono=300 123 4567&numero=7&pagina=0&tamano=20} (todo opcional). */
     @GetMapping
     public RifaDtos.Pagina<AdminDtos.CompraAdminDto> listar(
             @RequestParam(required = false) EstadoCompra estado,
             @RequestParam(required = false) String rifa,
             @RequestParam(required = false) String telefono,
+            @RequestParam(required = false) Integer numero,
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "20") int tamano,
             @AuthenticationPrincipal UsuarioAutenticado actor) {
-        return admin.listar(actor, estado, rifa, telefono, pagina, tamano);
+        return admin.listar(actor, estado, rifa, telefono, numero, pagina, tamano);
     }
 
     @PostMapping("/{codigo}/confirmar-pago-manual")

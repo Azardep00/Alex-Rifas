@@ -28,6 +28,11 @@ public interface BoletoRepository extends JpaRepository<Boleto, Long> {
     void deleteByRifaId(Long rifaId);
     List<Boleto> findByCompraId(Long compraId);
     List<Boleto> findByCompraIdIn(Collection<Long> compraIds);
+
+    /** Compras que tienen hoy ese número (un boleto liberado ya no apunta a su compra anterior). Búsqueda de la cola de pagos (CP-18). */
+    @org.springframework.data.jpa.repository.Query(
+        "select distinct b.compraId from Boleto b where b.numero = :numero and b.compraId is not null")
+    List<Long> findCompraIdsByNumero(@org.springframework.data.repository.query.Param("numero") int numero);
     /** Reservas vigentes (las vencidas que el job aún no procesó no cuentan). */
     long countByRifaIdAndEstadoAndReservadoHastaAfter(Long rifaId, EstadoBoleto estado, Instant ahora);
     List<Boleto> findByRifaIdAndEstadoOrderByNumeroAsc(Long rifaId, EstadoBoleto estado);
