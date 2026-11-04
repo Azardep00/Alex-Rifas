@@ -137,10 +137,11 @@ class RifaServiceTest {
 
     @Test
     void laCantidadDeBoletosDebeSerExactamenteDiezALosDigitos() {
-        when(loterias.findById(5L)).thenReturn(Optional.of(loteria(true))); // así solo falla la cantidad
         assertEquals(400, rechazo(peticion(MetodoSorteo.LOTERIA, 500, 5L, 2, null, null)));
         assertEquals(400, rechazo(peticion(MetodoSorteo.LOTERIA, 100, 5L, 3, null, null)));
         assertEquals(400, rechazo(peticion(MetodoSorteo.LOTERIA, 1000, 5L, 4, null, null)));
+        // La cantidad se valida antes de consultar el catálogo: ningún rechazo llegó a buscar la lotería.
+        verify(loterias, never()).findById(any());
     }
 
     @Test
