@@ -2,6 +2,7 @@ package com.alexrifas.api.service;
 
 import com.alexrifas.api.dto.LoteriaDtos;
 import com.alexrifas.api.entity.Loteria;
+import com.alexrifas.api.model.Rol;
 import com.alexrifas.api.repository.LoteriaRepository;
 import com.alexrifas.api.security.UsuarioAutenticado;
 import java.time.Clock;
@@ -35,6 +36,15 @@ public class LoteriaService {
         List<Loteria> filas = activa == null ? loterias.findAllByOrderByNombreAsc()
             : loterias.findByActivaOrderByNombreAsc(activa);
         return filas.stream().map(LoteriaService::aDto).toList();
+    }
+
+    /** CP-17: el wizard de rifas necesita elegir lotería también como ORGANIZADOR. Solo lectura y solo activas. */
+    @Transactional(readOnly = true)
+    public List<LoteriaDtos.LoteriaDto> listarActivasParaGestor(UsuarioAutenticado actor) {
+        if (actor == null || (actor.rol() != Rol.ADMIN && actor.rol() != Rol.ORGANIZADOR)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo organizadores y administradores.");
+        }
+        return loterias.findByActivaOrderByNombreAsc(true).stream().map(LoteriaService::aDto).toList();
     }
 
     @Transactional
